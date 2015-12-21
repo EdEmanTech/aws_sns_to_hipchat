@@ -13,13 +13,16 @@ post '/hipchat/snstopic/:roomid' do
     puts params[:roomid]
     data = JSON.parse(request.body.read)
     data.each do |d|
-    puts d
+      puts d
+    end
+  rescue JSON::ParserError
+    halt 400, 'JSON is required'
   end
 
-    @hipchat_message = data['Message']
-    @message_color = 'yellow'
+  @hipchat_message = data['Message']
+  @message_color = 'yellow'
 
-    puts "message is - #{@hipchat_message}"
+  puts "message is - #{@hipchat_message}"
 
   # Json Structure for SNS is a bit hacky, child json within the Message can have many meanings which you need to work out, nothings easy in life it seems.
   begin
@@ -27,11 +30,11 @@ post '/hipchat/snstopic/:roomid' do
   rescue
     puts "Couldn't Parse Message Data from SNS :- #{data['Message']}"
   end
-  
+
   unless data['SubscribeURL'].nil?
     puts 'Attempting to Auto-Subscribe to SNS Notifications...'
-      
-    url = URI.parse("#{data['SubscribeURL']}")        
+
+    url = URI.parse("#{data['SubscribeURL']}")
     req = Net::HTTP::Get.new(url.to_s)
     res = Net::HTTP.start(url.host) {|http|http.request(req)}
     puts res.body
@@ -58,12 +61,9 @@ post '/hipchat/snstopic/:roomid' do
       end
     end
   end
-    
+
   puts "Writing Message: #{@hipchat_message} to room id #{params[:roomid]}"
   hipchat_api = HipChat::API.new("#{ENV['HIPCHAT_AUTH_TOKEN']}")
   @status = hipchat_api.rooms_message(params[:roomid], 'Sns Topic', @hipchat_message, notify = 1, color = @message_color, message_format = 'html')
   puts @status
-  rescue JSON::ParserError
-    halt 400, 'JSON is required'
-  end
 end
